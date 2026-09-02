@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/asta', label: 'Asta', adminOnly: false },
   { href: '/tabellone', label: 'Tabellone', adminOnly: false },
   { href: '/note', label: 'Le mie note', adminOnly: false },
+  { href: '/algoritmo', label: 'Algoritmo', adminOnly: true },
   { href: '/setup', label: 'Setup', adminOnly: true },
 ];
 
