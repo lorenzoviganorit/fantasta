@@ -348,6 +348,69 @@ function ParamsPanel({
       {open && (
         <div className="mt-3 space-y-4 text-sm">
           <div>
+            <div className="mb-1 text-xs text-slate-400">
+              Prezzo atteso del #1 per ruolo (àncora di calibrazione)
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {ROLES.map((r) => (
+                <label key={r} className="flex items-center gap-1">
+                  <span className="w-4 font-bold" style={{ color: ROLE_COLOR[r] }}>
+                    {r}
+                  </span>
+                  <input
+                    type="number"
+                    className={cls}
+                    value={params.topAnchor[r]}
+                    onChange={(e) =>
+                      onChange({
+                        ...params,
+                        topAnchor: { ...params.topAnchor, [r]: Number(e.target.value) },
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1 text-xs text-slate-400">
+              Quota del budget per ruolo (somma{' '}
+              {(
+                params.roleBudgetShare.P +
+                params.roleBudgetShare.D +
+                params.roleBudgetShare.C +
+                params.roleBudgetShare.A
+              ).toFixed(2)}
+              )
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {ROLES.map((r) => (
+                <label key={r} className="flex items-center gap-1">
+                  <span className="w-4 font-bold" style={{ color: ROLE_COLOR[r] }}>
+                    {r}
+                  </span>
+                  <input
+                    type="number"
+                    step={0.01}
+                    className={cls}
+                    value={params.roleBudgetShare[r]}
+                    onChange={(e) =>
+                      onChange({
+                        ...params,
+                        roleBudgetShare: {
+                          ...params.roleBudgetShare,
+                          [r]: Number(e.target.value),
+                        },
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <div className="mb-1 text-xs text-slate-400">Moltiplicatore per fascia</div>
             <div className="flex flex-wrap gap-3">
               {(
@@ -384,13 +447,33 @@ function ParamsPanel({
               />
             </label>
             <label className="flex items-center gap-1">
-              <span className="text-slate-400">peso fantamedia scorsa</span>
+              <span className="text-slate-400">peso fantamedia scorsa (A)</span>
               <input
                 type="number"
                 step={0.05}
                 className={cls}
                 value={params.fmWeight}
                 onChange={(e) => onChange({ ...params, fmWeight: Number(e.target.value) })}
+              />
+            </label>
+            <label className="flex items-center gap-1">
+              <span className="text-slate-400">peso xG/xA (B)</span>
+              <input
+                type="number"
+                step={0.05}
+                className={cls}
+                value={params.xgWeight}
+                onChange={(e) => onChange({ ...params, xgWeight: Number(e.target.value) })}
+              />
+            </label>
+            <label className="flex items-center gap-1">
+              <span className="text-slate-400">rischio infortuni (B)</span>
+              <input
+                type="number"
+                step={0.01}
+                className={cls}
+                value={params.injuryRisk}
+                onChange={(e) => onChange({ ...params, injuryRisk: Number(e.target.value) })}
               />
             </label>
             <label className="flex items-center gap-1">

@@ -66,6 +66,8 @@ export interface Player {
   presenze_last: number | null;
   goals_last: number | null;
   assists_last: number | null;
+  xg_last: number | null;
+  xa_last: number | null;
   is_penalty_taker: boolean;
   is_setpiece_taker: boolean;
   titolarita_tier: TitolaritaTier | null;
