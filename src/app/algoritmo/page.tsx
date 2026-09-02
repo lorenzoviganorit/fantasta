@@ -3,12 +3,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { ROLES, ROLE_COLOR, type Player, type PlayerNote, type Role } from '@/lib/types';
+import {
+  ROLES,
+  ROLE_COLOR,
+  type Player,
+  type PlayerNote,
+  type Role,
+  type TitolaritaTier,
+} from '@/lib/types';
 import {
   DEFAULT_PARAMS,
   computeValuations,
+  computeProjection,
   startersBudgetCheck,
   type ValuationParams,
+  type ValuationRow,
+  type ProjectionRow,
 } from '@/lib/valuation';
 
 const LS_KEY = 'fantasta.valuationParams';
@@ -21,6 +31,7 @@ export default function AlgoritmoPage() {
   const [loading, setLoading] = useState(true);
   const [params, setParams] = useState<ValuationParams>(DEFAULT_PARAMS);
   const [role, setRole] = useState<Role>('A');
+  const [engine, setEngine] = useState<'A' | 'B'>('B');
   const [saveMsg, setSaveMsg] = useState('');
   const [overwrite, setOverwrite] = useState(false);
 
@@ -65,10 +76,18 @@ export default function AlgoritmoPage() {
   );
 
   const rows = useMemo(
-    () => computeValuations(players, params, favoriteIds),
-    [players, params, favoriteIds]
+    () =>
+      engine === 'A'
+        ? computeValuations(players, params, favoriteIds)
+        : computeProjection(players, params, favoriteIds),
+    [engine, players, params, favoriteIds]
   );
   const check = useMemo(() => startersBudgetCheck(rows, params), [rows, params]);
+
+  const histCount = useMemo(
+    () => players.filter((p) => p.presenze_last != null).length,
+    [players]
+  );
 
   const shown = useMemo(
     () =>
@@ -77,6 +96,17 @@ export default function AlgoritmoPage() {
         .sort((a, b) => b.expectedPrice - a.expectedPrice),
     [rows, role]
   );
+  const isProj = (r: ValuationRow): r is ProjectionRow => 'fmAttesa' in r;
+
+  async function setTier(playerId: number, tier: TitolaritaTier | null) {
+    setPlayers((prev) =>
+      prev.map((p) => (p.id === playerId ? { ...p, titolarita_tier: tier } : p))
+    );
+    await supabase
+      .from('players')
+      .update({ titolarita_tier: tier })
+      .eq('id', playerId);
+  }
 
   async function saveToNotes() {
     if (!user) return;
@@ -117,12 +147,31 @@ export default function AlgoritmoPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Algoritmo — valore atteso (motore A)</h1>
+        <h1 className="text-2xl font-bold">Algoritmo — valore atteso</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Stima market-based da FVM + fascia titolarità + rigoristi/piazzati + fantamedia
-          scorsa. Parametri salvati in questo browser. Il motore B (proiezione con dati
-          storici e xG) arriverà con il pipeline dati.
+          {engine === 'A'
+            ? 'Motore A — market: qt_i × fascia × qualità FVM × rigoristi, riscalato sul budget.'
+            : 'Motore B — proiezione: presenze attese × fantamedia attesa (dai dati 2025‑26) → valore sul rimpiazzo → crediti.'}{' '}
+          Parametri salvati in questo browser.
         </p>
+        <p className="mt-1 text-xs text-slate-600">
+          Dati storici 2025‑26 disponibili per {histCount}/{players.length} giocatori
+          (gli altri stimati dalle medie di ruolo × fascia).
+        </p>
+      </div>
+
+      <div className="flex gap-1.5">
+        {(['B', 'A'] as const).map((e) => (
+          <button
+            key={e}
+            onClick={() => setEngine(e)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+              engine === e ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            Motore {e}
+          </button>
+        ))}
       </div>
 
       <ParamsPanel params={params} onChange={saveParams} />
@@ -178,11 +227,20 @@ export default function AlgoritmoPage() {
             <tr>
               <th className="px-3 py-2 text-left">#</th>
               <th className="px-3 py-2 text-left">Giocatore</th>
+              <th className="px-2 py-2 text-left">Fascia</th>
               <th className="px-2 py-2 text-right">Qt</th>
-              <th className="px-2 py-2 text-right">FVM</th>
-              <th className="px-2 py-2 text-right">Prezzo atteso</th>
+              {engine === 'B' ? (
+                <>
+                  <th className="px-2 py-2 text-right">Pres.</th>
+                  <th className="px-2 py-2 text-right">FM att.</th>
+                  <th className="px-2 py-2 text-right">Fpt</th>
+                </>
+              ) : (
+                <th className="px-2 py-2 text-right">FVM</th>
+              )}
+              <th className="px-2 py-2 text-right">Prezzo</th>
               <th className="px-2 py-2 text-right">Max</th>
-              <th className="px-2 py-2 text-right">Δ vs Qt</th>
+              <th className="px-2 py-2 text-right">Δ Qt</th>
               <th className="px-2 py-2 text-right">Mio</th>
             </tr>
           </thead>
@@ -190,6 +248,7 @@ export default function AlgoritmoPage() {
             {shown.map((r, i) => {
               const n = notes[r.player.id];
               const dq = r.player.qt_i ? r.expectedPrice - r.player.qt_i : null;
+              const proj = isProj(r) ? r : null;
               return (
                 <tr
                   key={r.player.id}
@@ -200,19 +259,51 @@ export default function AlgoritmoPage() {
                     {n?.is_favorite && '⭐ '}
                     <b>{r.player.name}</b>{' '}
                     <span className="text-slate-500">{r.player.team}</span>
-                    {r.player.titolarita_tier && (
-                      <span className="ml-1 text-xs text-slate-600">
-                        {r.player.titolarita_tier}
+                    {r.player.is_penalty_taker && <span title="rigorista"> ⚽</span>}
+                    {proj && !proj.hasHistory && (
+                      <span className="ml-1 text-xs text-amber-600" title="nessuno storico Serie A: stima da medie di ruolo">
+                        ~
                       </span>
                     )}
-                    {r.player.is_penalty_taker && <span title="rigorista"> ⚽</span>}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <select
+                      value={r.player.titolarita_tier ?? ''}
+                      onChange={(e) =>
+                        setTier(
+                          r.player.id,
+                          (e.target.value || null) as TitolaritaTier | null
+                        )
+                      }
+                      className="rounded bg-slate-900 border border-slate-700 px-1 py-0.5 text-xs outline-none focus:border-indigo-500"
+                    >
+                      <option value="">auto</option>
+                      <option value="titolarissimo">titolarissimo</option>
+                      <option value="titolare">titolare</option>
+                      <option value="ballottaggio">ballottaggio</option>
+                      <option value="rincalzo">rincalzo</option>
+                    </select>
                   </td>
                   <td className="px-2 py-1.5 text-right text-slate-400">
                     {r.player.qt_i ?? '–'}
                   </td>
-                  <td className="px-2 py-1.5 text-right text-slate-500">
-                    {r.player.fvm ?? '–'}
-                  </td>
+                  {engine === 'B' ? (
+                    <>
+                      <td className="px-2 py-1.5 text-right text-slate-500">
+                        {proj?.presenzeAttese ?? '–'}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">
+                        {proj?.fmAttesa ?? '–'}
+                      </td>
+                      <td className="px-2 py-1.5 text-right text-slate-500">
+                        {proj?.fantapunti ?? '–'}
+                      </td>
+                    </>
+                  ) : (
+                    <td className="px-2 py-1.5 text-right text-slate-500">
+                      {r.player.fvm ?? '–'}
+                    </td>
+                  )}
                   <td className="px-2 py-1.5 text-right font-semibold">{r.expectedPrice}</td>
                   <td className="px-2 py-1.5 text-right text-slate-400">{r.maxBid}</td>
                   <td
