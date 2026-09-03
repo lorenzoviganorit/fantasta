@@ -11,6 +11,7 @@ import {
   type Role,
 } from '@/lib/types';
 import NotesImport from './NotesImport';
+import { useSort, ThSort } from '@/components/sortable';
 
 type Filter = 'tutti' | 'preferiti' | 'con-valore' | 'senza-valore';
 
@@ -89,6 +90,24 @@ export default function NotePage() {
       });
   }, [players, notes, role, query, filter]);
 
+  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'fav' | 'ev' | 'max';
+  const getVal = useCallback(
+    (p: Player, k: Col) => {
+      const n = notes[p.id];
+      switch (k) {
+        case 'name': return p.name;
+        case 'team': return p.team;
+        case 'qt_i': return p.qt_i;
+        case 'fvm': return p.fvm;
+        case 'fav': return n?.is_favorite ? 1 : 0;
+        case 'ev': return n?.expected_value ?? null;
+        case 'max': return n?.max_bid ?? null;
+      }
+    },
+    [notes]
+  );
+  const { sorted, sort } = useSort<Player, Col>(rows, getVal, 'fvm', 'desc');
+
   if (authLoading || loading)
     return <main className="mx-auto max-w-4xl px-4 py-10 text-slate-500">Caricamento…</main>;
 
@@ -145,17 +164,17 @@ export default function NotePage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-900/60 text-xs text-slate-400">
             <tr>
-              <th className="px-3 py-2 text-left">Giocatore</th>
-              <th className="px-2 py-2 text-right">Qt</th>
-              <th className="px-2 py-2 text-right">FVM</th>
-              <th className="px-2 py-2 text-center">★</th>
-              <th className="px-2 py-2 text-right">Valore atteso</th>
-              <th className="px-2 py-2 text-right">Max</th>
+              <ThSort label="Giocatore" col="name" sort={sort} className="px-3 py-2 text-left" />
+              <ThSort label="Qt" col="qt_i" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="FVM" col="fvm" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="★" col="fav" sort={sort} className="px-2 py-2 text-center" />
+              <ThSort label="Valore atteso" col="ev" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="Max" col="max" sort={sort} className="px-2 py-2 text-right" />
               <th className="px-3 py-2 text-left">Nota</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => {
+            {sorted.map((p) => {
               const n = notes[p.id];
               return (
                 <tr key={p.id} className="border-t border-slate-800">

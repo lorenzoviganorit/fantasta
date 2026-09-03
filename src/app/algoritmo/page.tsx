@@ -20,6 +20,7 @@ import {
   type ValuationRow,
   type ProjectionRow,
 } from '@/lib/valuation';
+import { useSort, ThSort } from '@/components/sortable';
 
 const LS_KEY = 'fantasta.valuationParams';
 
@@ -89,14 +90,32 @@ export default function AlgoritmoPage() {
     [players]
   );
 
-  const shown = useMemo(
-    () =>
-      rows
-        .filter((r) => r.player.role === role)
-        .sort((a, b) => b.expectedPrice - a.expectedPrice),
+  const isProj = (r: ValuationRow): r is ProjectionRow => 'fmAttesa' in r;
+
+  const roleRows = useMemo(
+    () => rows.filter((r) => r.player.role === role),
     [rows, role]
   );
-  const isProj = (r: ValuationRow): r is ProjectionRow => 'fmAttesa' in r;
+  type Col = 'name' | 'qt' | 'fvm' | 'pres' | 'fm' | 'fpt' | 'price' | 'max' | 'dq' | 'mio';
+  const getVal = useCallback(
+    (r: ValuationRow, k: Col) => {
+      const p = isProj(r) ? r : null;
+      switch (k) {
+        case 'name': return r.player.name;
+        case 'qt': return r.player.qt_i;
+        case 'fvm': return r.player.fvm;
+        case 'pres': return p?.presenzeAttese ?? null;
+        case 'fm': return p?.fmAttesa ?? null;
+        case 'fpt': return p?.fantapunti ?? null;
+        case 'price': return r.expectedPrice;
+        case 'max': return r.maxBid;
+        case 'dq': return r.player.qt_i ? r.expectedPrice - r.player.qt_i : null;
+        case 'mio': return notes[r.player.id]?.expected_value ?? null;
+      }
+    },
+    [notes]
+  );
+  const { sorted: shown, sort } = useSort<ValuationRow, Col>(roleRows, getVal, 'price', 'desc');
 
   async function setTier(playerId: number, tier: TitolaritaTier | null) {
     setPlayers((prev) =>
@@ -226,22 +245,22 @@ export default function AlgoritmoPage() {
           <thead className="bg-slate-900/60 text-xs text-slate-400">
             <tr>
               <th className="px-3 py-2 text-left">#</th>
-              <th className="px-3 py-2 text-left">Giocatore</th>
+              <ThSort label="Giocatore" col="name" sort={sort} className="px-3 py-2 text-left" />
               <th className="px-2 py-2 text-left">Fascia</th>
-              <th className="px-2 py-2 text-right">Qt</th>
+              <ThSort label="Qt" col="qt" sort={sort} className="px-2 py-2 text-right" />
               {engine === 'B' ? (
                 <>
-                  <th className="px-2 py-2 text-right">Pres.</th>
-                  <th className="px-2 py-2 text-right">FM att.</th>
-                  <th className="px-2 py-2 text-right">Fpt</th>
+                  <ThSort label="Pres." col="pres" sort={sort} className="px-2 py-2 text-right" />
+                  <ThSort label="FM att." col="fm" sort={sort} className="px-2 py-2 text-right" />
+                  <ThSort label="Fpt" col="fpt" sort={sort} className="px-2 py-2 text-right" />
                 </>
               ) : (
-                <th className="px-2 py-2 text-right">FVM</th>
+                <ThSort label="FVM" col="fvm" sort={sort} className="px-2 py-2 text-right" />
               )}
-              <th className="px-2 py-2 text-right">Prezzo</th>
-              <th className="px-2 py-2 text-right">Max</th>
-              <th className="px-2 py-2 text-right">Δ Qt</th>
-              <th className="px-2 py-2 text-right">Mio</th>
+              <ThSort label="Prezzo" col="price" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="Max" col="max" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="Δ Qt" col="dq" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="Mio" col="mio" sort={sort} className="px-2 py-2 text-right" />
             </tr>
           </thead>
           <tbody>
