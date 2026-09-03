@@ -23,6 +23,8 @@ import {
   inflationFactor,
 } from '@/lib/auction';
 import SituazioneSquadre from '@/components/SituazioneSquadre';
+import { useSpeech } from '@/hooks/useSpeech';
+import { parseAuctionUtterance, type ParsedUtterance } from '@/lib/voiceParse';
 
 interface RecentPick extends Pick {
   _player?: Player;
@@ -49,6 +51,7 @@ export default function AstaPage() {
   const [price, setPrice] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [voice, setVoice] = useState<ParsedUtterance | null>(null);
   const priceRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -141,6 +144,26 @@ export default function AstaPage() {
     setTimeout(() => priceRef.current?.focus(), 30);
   }
 
+  function handleVoice(text: string) {
+    // prima cerca il giocatore nel ruolo in corso, poi fra tutti i disponibili
+    let parsed = parseAuctionUtterance(text, teams, available.filter((p) => p.role === role));
+    if (!parsed.player) parsed = parseAuctionUtterance(text, teams, available);
+    setVoice(parsed);
+    if (parsed.player) {
+      setSelected(parsed.player);
+      setRole(parsed.player.role);
+      setErr('');
+      setBuyTeam(parsed.teamId ?? '');
+      setPrice(parsed.price != null ? String(parsed.price) : '');
+      setTimeout(() => priceRef.current?.focus(), 30);
+    } else {
+      // niente match: metti il testo nella ricerca per restringere la lista
+      setQuery(text.split(' ').slice(0, 3).join(' '));
+    }
+  }
+
+  const speech = useSpeech(handleVoice);
+
   const buyCheck =
     selected && buyTeam
       ? canBuy(
@@ -183,6 +206,7 @@ export default function AstaPage() {
     setPrice('');
     setBusy(false);
     setQuery('');
+    setVoice(null);
     load();
   }
 
@@ -320,13 +344,75 @@ export default function AstaPage() {
               </button>
             ))}
           </div>
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Scrivi le lettere del giocatore chiamato…"
-            className="w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-2.5 outline-none focus:border-indigo-500"
-          />
+          <div className="flex gap-2">
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Scrivi le lettere del giocatore chiamato…"
+              className="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-4 py-2.5 outline-none focus:border-indigo-500"
+            />
+            {speech.supported && (
+              <button
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  speech.start();
+                }}
+                onPointerUp={() => speech.stop()}
+                onPointerLeave={() => speech.listening && speech.stop()}
+                title="Tieni premuto e detta: «Capocchie si aggiudica Svilar per dieci»"
+                className={`select-none rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  speech.listening
+                    ? 'bg-red-600 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
+              >
+                {speech.listening ? '● ascolto…' : '🎤 parla'}
+              </button>
+            )}
+          </div>
+          {(speech.interim || voice || speech.error) && (
+            <div className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm">
+              {speech.error ? (
+                <span className="text-red-400">{speech.error}</span>
+              ) : speech.listening ? (
+                <span className="text-slate-400">{speech.interim || '…'}</span>
+              ) : voice ? (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-slate-500">«{voice.transcript}»</span>
+                  <span className="text-slate-600">→</span>
+                  {voice.player ? (
+                    <span>
+                      <b>{voice.player.name}</b>
+                      {voice.teamName && (
+                        <>
+                          {' '}
+                          <span className="text-slate-500">→</span>{' '}
+                          <b>{voice.teamName}</b>
+                        </>
+                      )}
+                      {voice.price != null && (
+                        <span className="text-emerald-400"> {voice.price}</span>
+                      )}
+                      <span className="ml-1 text-xs text-slate-500">
+                        — controlla e premi Assegna
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-amber-400">
+                      giocatore non riconosciuto, cerca a mano
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setVoice(null)}
+                    className="ml-auto text-xs text-slate-500 hover:text-slate-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
           <div className="rounded-xl border border-slate-800 divide-y divide-slate-800/70 max-h-[60vh] overflow-y-auto">
             {filtered.length === 0 && (
               <div className="p-4 text-sm text-slate-500">Nessun giocatore disponibile.</div>
