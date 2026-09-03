@@ -25,6 +25,7 @@ export function useSpeech(onResult: (text: string) => void) {
   });
   const recRef = useRef<SR | null>(null);
   const finalRef = useRef('');
+  const interimRef = useRef('');
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
@@ -39,7 +40,7 @@ export function useSpeech(onResult: (text: string) => void) {
     }
     const rec: SR = new Ctor();
     rec.lang = 'it-IT';
-    rec.continuous = true;
+    rec.continuous = false;
     rec.interimResults = true;
     rec.maxAlternatives = 3;
 
@@ -50,6 +51,7 @@ export function useSpeech(onResult: (text: string) => void) {
         if (res.isFinal) finalRef.current += res[0].transcript + ' ';
         else interim += res[0].transcript;
       }
+      interimRef.current = interim;
       setState((s) => ({ ...s, interim }));
     };
     rec.onerror = (e: any) => {
@@ -66,7 +68,9 @@ export function useSpeech(onResult: (text: string) => void) {
     };
     rec.onend = () => {
       setState((s) => ({ ...s, listening: false, interim: '' }));
-      const text = finalRef.current.trim();
+      // usa il testo finale; se il browser non l'ha "finalizzato" ripiega sull'interim
+      const text = (finalRef.current.trim() || interimRef.current.trim()).trim();
+      interimRef.current = '';
       if (text) onResultRef.current(text);
     };
 
@@ -83,6 +87,7 @@ export function useSpeech(onResult: (text: string) => void) {
     const rec = recRef.current;
     if (!rec || state.listening) return;
     finalRef.current = '';
+    interimRef.current = '';
     setState((s) => ({ ...s, error: null, interim: '', listening: true }));
     try {
       rec.start();

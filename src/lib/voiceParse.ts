@@ -148,12 +148,15 @@ export function parseNumberIt(text: string): number | null {
 
 // ---------- parsing frase d'asta ----------
 
-const FILLER = [
-  'si', 'aggiudica', 'aggiudicato', 'preso', 'prende', 'compra', 'comprato',
-  'per', 'a', 'da', 'al', 'alla', 'il', 'lo', 'la', 'e', 'con', 'di',
-  'fantamilioni', 'fantamilione', 'milioni', 'milione', 'crediti', 'credito',
-  'euro', 'va', 'vanno',
-];
+const FILLER = new Set([
+  'si', 'se', 'lo', 'la', 'il', 'i', 'gli', 'le', 'un', 'uno', 'una',
+  'aggiudica', 'aggiudicano', 'aggiudicato', 'aggiudicata', 'aggiudico',
+  'prende', 'prendono', 'preso', 'presa', 'prese', 'prendo',
+  'compra', 'comprano', 'comprato', 'comprata', 'acquista', 'acquistato',
+  'per', 'a', 'ad', 'da', 'al', 'allo', 'alla', 'ai', 'e', 'ed', 'con', 'di',
+  'fantamilioni', 'fantamilione', 'fanta', 'milioni', 'milione',
+  'crediti', 'credito', 'euro', 'va', 'vanno', 'fa', 'più',
+]);
 
 export interface ParsedUtterance {
   transcript: string;
@@ -175,7 +178,7 @@ export function parseAuctionUtterance(
   const rawTokens = norm(transcript).split(' ').filter(Boolean);
   // togli i numeri e le parole di servizio per l'analisi nomi
   const tokens = rawTokens.filter(
-    (t) => !FILLER.includes(t) && !/^\d+$/.test(t) && wordChunkToNumber(t) == null
+    (t) => !FILLER.has(t) && !/^\d+$/.test(t) && wordChunkToNumber(t) == null
   );
 
   // squadra: match sulla parola più distintiva di nome / manager

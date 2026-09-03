@@ -156,10 +156,8 @@ export default function AstaPage() {
       setBuyTeam(parsed.teamId ?? '');
       setPrice(parsed.price != null ? String(parsed.price) : '');
       setTimeout(() => priceRef.current?.focus(), 30);
-    } else {
-      // niente match: metti il testo nella ricerca per restringere la lista
-      setQuery(text.split(' ').slice(0, 3).join(' '));
     }
+    // se il giocatore non è riconosciuto la card lo segnala e si cerca a mano
   }
 
   const speech = useSpeech(handleVoice);
@@ -356,18 +354,20 @@ export default function AstaPage() {
               <button
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  speech.start();
+                  e.currentTarget.setPointerCapture?.(e.pointerId);
+                  if (speech.listening) speech.stop();
+                  else speech.start();
                 }}
                 onPointerUp={() => speech.stop()}
-                onPointerLeave={() => speech.listening && speech.stop()}
-                title="Tieni premuto e detta: «Capocchie si aggiudica Svilar per dieci»"
+                onPointerCancel={() => speech.stop()}
+                title="Premi, detta «Capocchie si aggiudica Svilar per dieci», rilascia (o premi di nuovo per fermare)"
                 className={`select-none rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
                   speech.listening
                     ? 'bg-red-600 text-white'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                 }`}
               >
-                {speech.listening ? '● ascolto…' : '🎤 parla'}
+                {speech.listening ? '● ascolto — parla' : '🎤 parla'}
               </button>
             )}
           </div>
@@ -400,7 +400,14 @@ export default function AstaPage() {
                     </span>
                   ) : (
                     <span className="text-amber-400">
-                      giocatore non riconosciuto, cerca a mano
+                      giocatore non riconosciuto — cerca a mano
+                      {(voice.teamName || voice.price != null) && (
+                        <span className="text-slate-500">
+                          {' '}
+                          (capito:{voice.teamName ? ` ${voice.teamName}` : ''}
+                          {voice.price != null ? ` · ${voice.price}` : ''})
+                        </span>
+                      )}
                     </span>
                   )}
                   <button
