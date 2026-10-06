@@ -763,14 +763,12 @@ function PrivateNote({
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [val, setVal] = useState(note?.expected_value?.toString() ?? '');
-  const [max, setMax] = useState(note?.max_bid?.toString() ?? '');
   const [text, setText] = useState(note?.note ?? '');
   const [fav, setFav] = useState(note?.is_favorite ?? false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setVal(note?.expected_value?.toString() ?? '');
-    setMax(note?.max_bid?.toString() ?? '');
     setText(note?.note ?? '');
     setFav(note?.is_favorite ?? false);
   }, [note, player.id]);
@@ -784,7 +782,6 @@ function PrivateNote({
         player_id: player.id,
         is_favorite: over.fav ?? fav,
         expected_value: val === '' ? null : Number(val),
-        max_bid: max === '' ? null : Number(max),
         note: text.trim() === '' ? null : text.trim(),
       },
       { onConflict: 'user_id,player_id' }
@@ -814,14 +811,6 @@ function PrivateNote({
           type="number"
           value={val}
           onChange={(e) => setVal(e.target.value)}
-          onBlur={() => save()}
-          className={numCls}
-        />
-        <span className="text-slate-400">max</span>
-        <input
-          type="number"
-          value={max}
-          onChange={(e) => setMax(e.target.value)}
           onBlur={() => save()}
           className={numCls}
         />
