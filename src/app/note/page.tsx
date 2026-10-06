@@ -15,6 +15,7 @@ import { useSort, ThSort } from '@/components/sortable';
 import { fvmFactor, scaleFvm } from '@/lib/valuation';
 import { SOS_ORDER, sosCategory, sosScore, sosClass } from '@/lib/sos';
 import { SLOT_VALUES, slotOf, slotScore, slotClass } from '@/lib/slots';
+import { statOf, fmt } from '@/lib/stats';
 
 type Filter = 'tutti' | 'preferiti' | 'con-valore' | 'senza-valore';
 const nameOf = (m: Record<string, string>, id: string | null) => (id ? m[id] ?? '?' : '?');
@@ -133,7 +134,7 @@ export default function NotePage() {
   );
 
   const fvmF = useMemo(() => fvmFactor(players), [players]);
-  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'sos' | 'slot' | 'fav' | 'ev' | 'max';
+  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'pv' | 'fm' | 'gol' | 'ass' | 'sos' | 'slot' | 'fav' | 'ev' | 'max';
   const getVal = useCallback(
     (p: Player, k: Col) => {
       const n = notes[p.id];
@@ -142,6 +143,10 @@ export default function NotePage() {
         case 'team': return p.team;
         case 'qt_i': return p.qt_i;
         case 'fvm': return p.fvm;
+        case 'pv': return statOf(p.id)?.pv ?? null;
+        case 'fm': return statOf(p.id)?.fm ?? null;
+        case 'gol': return statOf(p.id)?.gol ?? null;
+        case 'ass': return statOf(p.id)?.ass ?? null;
         case 'sos': return sosScore(sosCategory(p.id));
         case 'slot': return slotScore(slotOf(p.id));
         case 'fav': return n?.is_favorite ? 1 : 0;
@@ -269,6 +274,10 @@ export default function NotePage() {
               <ThSort label="Giocatore" col="name" sort={sort} className="px-3 py-2 text-left" />
               <ThSort label="Qt" col="qt_i" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="FVM 510" col="fvm" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="Pv" col="pv" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="FM" col="fm" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="Gol" col="gol" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="Ass" col="ass" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="SOS Fanta" col="sos" sort={sort} className="px-2 py-2 text-left" />
               <ThSort label="Slot" col="slot" sort={sort} className="px-2 py-2 text-left" />
               <ThSort label="★" col="fav" sort={sort} className="px-2 py-2 text-center" />
@@ -310,6 +319,10 @@ export default function NotePage() {
                   </td>
                   <td className="px-2 py-1.5 text-right text-slate-400">{p.qt_i ?? '–'}</td>
                   <td className="px-2 py-1.5 text-right text-slate-500">{scaleFvm(p.fvm, fvmF) ?? '–'}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{fmt(statOf(p.id)?.pv)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-slate-200">{fmt(statOf(p.id)?.fm)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmt(statOf(p.id)?.gol)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmt(statOf(p.id)?.ass)}</td>
                   <td className="px-2 py-1.5">
                     {sosCategory(p.id) && (
                       <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold ${sosClass(sosCategory(p.id)!)}`}>
@@ -375,7 +388,7 @@ export default function NotePage() {
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
+                <td colSpan={13} className="px-3 py-6 text-center text-slate-500">
                   Nessun giocatore.
                 </td>
               </tr>

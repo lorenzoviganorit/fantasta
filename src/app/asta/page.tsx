@@ -29,6 +29,7 @@ import SituazioneSquadre from '@/components/SituazioneSquadre';
 import { useSpeech } from '@/hooks/useSpeech';
 import { fvmFactor, scaleFvm } from '@/lib/valuation';
 import { SOS_ORDER, sosCategory, sosClass } from '@/lib/sos';
+import { statOf, fmt } from '@/lib/stats';
 import { parseAuctionUtterance, type ParsedUtterance } from '@/lib/voiceParse';
 
 interface RecentPick extends Pick {
@@ -535,6 +536,15 @@ export default function AstaPage() {
                       {sosCategory(p.id)}
                     </span>
                   )}
+                  {statOf(p.id) && (
+                    <span
+                      className="whitespace-nowrap text-xs tabular-nums text-slate-400"
+                      title="Stagione 2026-27: fantamedia · gol · assist (presenze)"
+                    >
+                      FM <b className="text-slate-200">{fmt(statOf(p.id)!.fm)}</b> · {fmt(statOf(p.id)!.gol)}G{' '}
+                      {fmt(statOf(p.id)!.ass)}A <span className="text-slate-600">({fmt(statOf(p.id)!.pv)})</span>
+                    </span>
+                  )}
                   {n?.expected_value != null && (
                     <span className="text-emerald-400" title="tuo valore atteso">
                       ~{n.expected_value}
@@ -559,6 +569,13 @@ export default function AstaPage() {
                     {selected.team} · {selected.role}
                   </span>
                 </div>
+                {statOf(selected.id) && (
+                  <div className="mt-0.5 text-xs tabular-nums text-slate-400">
+                    2026-27: {fmt(statOf(selected.id)!.pv)} pv · MV {fmt(statOf(selected.id)!.mv)} · FM{' '}
+                    <b className="text-slate-200">{fmt(statOf(selected.id)!.fm)}</b> ·{' '}
+                    {fmt(statOf(selected.id)!.gol)} gol · {fmt(statOf(selected.id)!.ass)} assist
+                  </div>
+                )}
                 <PrivateNote
                   player={selected}
                   note={notes[selected.id]}
