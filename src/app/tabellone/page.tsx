@@ -13,6 +13,7 @@ import {
   type TeamSummary,
 } from '@/lib/types';
 import SituazioneSquadre from '@/components/SituazioneSquadre';
+import Rose from '@/components/Rose';
 
 interface Row extends Pick {
   _player?: Player;
@@ -67,14 +68,14 @@ export default function TabellonePage() {
   }, [authLoading, load, supabase]);
 
   if (authLoading || loading)
-    return <main className="mx-auto max-w-5xl px-4 py-10 text-slate-500">Caricamento…</main>;
+    return <main className="mx-auto max-w-screen-2xl px-4 py-10 text-slate-500">Caricamento…</main>;
 
   const caller = summaries.find((s) => s.team_id === settings?.current_caller_team_id);
   const phase = settings?.current_role_phase ?? null;
   const chrono = [...picks].reverse();
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 space-y-5">
+    <main className="mx-auto max-w-screen-2xl px-4 py-6 space-y-5">
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
         <span className="font-bold">{settings?.league_name}</span>
         <span className="text-sm text-slate-400">stato: {settings?.status}</span>
@@ -100,6 +101,21 @@ export default function TabellonePage() {
           callerTeamId={settings?.current_caller_team_id}
         />
       </div>
+
+      <section>
+        <h3 className="mb-3 text-sm font-semibold">Rose</h3>
+        <Rose
+          summaries={summaries}
+          picks={picks.map((p) => ({
+            id: p.id,
+            team_id: p.team_id,
+            price: p.price,
+            player: p._player
+              ? { name: p._player.name, team: p._player.team, role: p._player.role }
+              : undefined,
+          }))}
+        />
+      </section>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
         <h3 className="mb-3 text-sm font-semibold">
