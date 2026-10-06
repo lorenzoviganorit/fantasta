@@ -23,7 +23,10 @@ export default function NotePage() {
   const [notes, setNotes] = useState<Record<number, PlayerNote>>({});
   const [loading, setLoading] = useState(true);
 
-  const [role, setRole] = useState<Role>('P');
+  const [roles, setRoles] = useState<Role[]>([...ROLES]);
+  const [teamF, setTeamF] = useState('');
+  const toggleRole = (r: Role) =>
+    setRoles((cur) => (cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]));
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('tutti');
 
@@ -80,7 +83,8 @@ export default function NotePage() {
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return players
-      .filter((p) => p.role === role)
+      .filter((p) => roles.includes(p.role))
+      .filter((p) => !teamF || p.team === teamF)
       .filter((p) => !q || p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
       .filter((p) => {
         const n = notes[p.id];
@@ -89,7 +93,12 @@ export default function NotePage() {
         if (filter === 'senza-valore') return n?.expected_value == null;
         return true;
       });
-  }, [players, notes, role, query, filter]);
+  }, [players, notes, roles, teamF, query, filter]);
+
+  const teamOptions = useMemo(
+    () => [...new Set(players.map((p) => p.team))].sort((a, b) => a.localeCompare(b, 'it')),
+    [players]
+  );
 
   const fvmF = useMemo(() => fvmFactor(players), [players]);
   type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'fav' | 'ev' | 'max';
@@ -134,16 +143,37 @@ export default function NotePage() {
           {ROLES.map((r) => (
             <button
               key={r}
-              onClick={() => setRole(r)}
+              onClick={() => toggleRole(r)}
+              title="Attiva/disattiva il ruolo"
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                role === r ? 'text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                roles.includes(r)
+                  ? 'text-white'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
-              style={role === r ? { background: ROLE_COLOR[r] } : undefined}
+              style={roles.includes(r) ? { background: ROLE_COLOR[r] } : undefined}
             >
               {r}
             </button>
           ))}
+          <button
+            onClick={() => setRoles(roles.length === ROLES.length ? [] : [...ROLES])}
+            className="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+          >
+            {roles.length === ROLES.length ? 'nessuno' : 'tutti'}
+          </button>
         </div>
+        <select
+          value={teamF}
+          onChange={(e) => setTeamF(e.target.value)}
+          className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+        >
+          <option value="">Tutte le squadre</option>
+          {teamOptions.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

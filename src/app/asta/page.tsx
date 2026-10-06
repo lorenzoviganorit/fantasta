@@ -49,6 +49,7 @@ export default function AstaPage() {
   const [loading, setLoading] = useState(true);
 
   const [role, setRole] = useState<Role>('P');
+  const [teamF, setTeamF] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Player | null>(null);
   const [buyTeam, setBuyTeam] = useState<string>('');
@@ -129,9 +130,15 @@ export default function AstaPage() {
     const q = query.trim().toLowerCase();
     return available
       .filter((p) => p.role === role)
+      .filter((p) => !teamF || p.team === teamF)
       .filter((p) => !q || p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
       .slice(0, 60);
-  }, [available, role, query]);
+  }, [available, role, teamF, query]);
+
+  const teamOptions = useMemo(
+    () => [...new Set(players.map((p) => p.team))].sort((a, b) => a.localeCompare(b, 'it')),
+    [players]
+  );
 
   const residualValue = useMemo(
     () =>
@@ -367,7 +374,7 @@ export default function AstaPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         {/* lista giocatori */}
         <div className="space-y-3">
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {ROLES.map((r) => (
               <button
                 key={r}
@@ -380,6 +387,18 @@ export default function AstaPage() {
                 {r}
               </button>
             ))}
+            <select
+              value={teamF}
+              onChange={(e) => setTeamF(e.target.value)}
+              className="ml-auto rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+            >
+              <option value="">Tutte le squadre</option>
+              {teamOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex gap-2">
             <input
