@@ -14,6 +14,7 @@ import NotesImport from './NotesImport';
 import { useSort, ThSort } from '@/components/sortable';
 import { fvmFactor, scaleFvm } from '@/lib/valuation';
 import { SOS_ORDER, sosCategory, sosScore, sosClass } from '@/lib/sos';
+import { SLOT_VALUES, slotOf, slotScore, slotClass } from '@/lib/slots';
 
 type Filter = 'tutti' | 'preferiti' | 'con-valore' | 'senza-valore';
 const nameOf = (m: Record<string, string>, id: string | null) => (id ? m[id] ?? '?' : '?');
@@ -28,6 +29,7 @@ export default function NotePage() {
   const [roles, setRoles] = useState<Role[]>([...ROLES]);
   const [teamF, setTeamF] = useState('');
   const [sosF, setSosF] = useState('');
+  const [slotF, setSlotF] = useState('');
   const [hideSold, setHideSold] = useState(false);
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const toggleRole = (r: Role) =>
@@ -106,6 +108,11 @@ export default function NotePage() {
       .filter((p) => !teamF || p.team === teamF)
       .filter((p) => !hideSold || p.status !== 'sold')
       .filter((p) => {
+        if (!slotF) return true;
+        const sl = slotOf(p.id);
+        return slotF === 'none' ? sl == null : sl === Number(slotF);
+      })
+      .filter((p) => {
         if (!sosF) return true;
         const c = sosCategory(p.id);
         return sosF === 'none' ? !c : c === sosF;
@@ -118,7 +125,7 @@ export default function NotePage() {
         if (filter === 'senza-valore') return n?.expected_value == null;
         return true;
       });
-  }, [players, notes, roles, teamF, sosF, hideSold, query, filter]);
+  }, [players, notes, roles, teamF, sosF, slotF, hideSold, query, filter]);
 
   const teamOptions = useMemo(
     () => [...new Set(players.map((p) => p.team))].sort((a, b) => a.localeCompare(b, 'it')),
@@ -126,7 +133,7 @@ export default function NotePage() {
   );
 
   const fvmF = useMemo(() => fvmFactor(players), [players]);
-  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'sos' | 'fav' | 'ev' | 'max';
+  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'sos' | 'slot' | 'fav' | 'ev' | 'max';
   const getVal = useCallback(
     (p: Player, k: Col) => {
       const n = notes[p.id];
@@ -136,6 +143,7 @@ export default function NotePage() {
         case 'qt_i': return p.qt_i;
         case 'fvm': return p.fvm;
         case 'sos': return sosScore(sosCategory(p.id));
+        case 'slot': return slotScore(slotOf(p.id));
         case 'fav': return n?.is_favorite ? 1 : 0;
         case 'ev': return n?.expected_value ?? null;
         case 'max': return n?.max_bid ?? null;
@@ -220,6 +228,20 @@ export default function NotePage() {
           ))}
           <option value="none">Non citati da SOS</option>
         </select>
+        <select
+          value={slotF}
+          onChange={(e) => setSlotF(e.target.value)}
+          title="Slot (FantaLab)"
+          className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+        >
+          <option value="">Tutti gli slot</option>
+          {SLOT_VALUES.map((v) => (
+            <option key={v} value={v}>
+              Slot {v}
+            </option>
+          ))}
+          <option value="none">Senza slot</option>
+        </select>
         <label className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-300">
           <input
             type="checkbox"
@@ -248,6 +270,7 @@ export default function NotePage() {
               <ThSort label="Qt" col="qt_i" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="FVM 510" col="fvm" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="SOS Fanta" col="sos" sort={sort} className="px-2 py-2 text-left" />
+              <ThSort label="Slot" col="slot" sort={sort} className="px-2 py-2 text-left" />
               <ThSort label="★" col="fav" sort={sort} className="px-2 py-2 text-center" />
               <ThSort label="Valore atteso" col="ev" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="Max" col="max" sort={sort} className="px-2 py-2 text-right" />
@@ -291,6 +314,15 @@ export default function NotePage() {
                     {sosCategory(p.id) && (
                       <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold ${sosClass(sosCategory(p.id)!)}`}>
                         {sosCategory(p.id)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    {slotOf(p.id) != null && (
+                      <span
+                        className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold ${slotClass(slotOf(p.id)!)}`}
+                      >
+                        Slot {slotOf(p.id)}
                       </span>
                     )}
                   </td>
@@ -343,7 +375,7 @@ export default function NotePage() {
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-slate-500">
+                <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
                   Nessun giocatore.
                 </td>
               </tr>
