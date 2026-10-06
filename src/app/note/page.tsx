@@ -160,10 +160,10 @@ export default function NotePage() {
   const { sorted, sort } = useSort<Player, Col>(rows, getVal, 'fvm', 'desc');
 
   if (authLoading || loading)
-    return <main className="mx-auto max-w-4xl px-4 py-10 text-slate-500">Caricamento…</main>;
+    return <main className="mx-auto max-w-screen-2xl px-4 py-10 text-slate-500">Caricamento…</main>;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6 space-y-5">
+    <main className="mx-auto max-w-screen-2xl px-4 py-6 space-y-5">
       <div>
         <h1 className="text-2xl font-bold">Le mie note</h1>
         <p className="mt-1 text-sm text-slate-400">
@@ -303,7 +303,7 @@ export default function NotePage() {
                       : undefined
                   }
                 >
-                  <td className="px-3 py-1.5">
+                  <td className="whitespace-nowrap px-3 py-1.5">
                     <span
                       className="mr-2 font-bold"
                       style={{ color: ROLE_COLOR[p.role] }}
