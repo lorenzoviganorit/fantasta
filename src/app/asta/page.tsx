@@ -21,6 +21,9 @@ import {
   phaseComplete,
   ROLE_SEQUENCE,
   inflationFactor,
+  slotsLeftForRole,
+  boughtForRole,
+  maxBid,
 } from '@/lib/auction';
 import SituazioneSquadre from '@/components/SituazioneSquadre';
 import { useSpeech } from '@/hooks/useSpeech';
@@ -472,21 +475,64 @@ export default function AstaPage() {
                 />
               </div>
 
-              <label className="block">
+              <div>
                 <span className="mb-1 block text-xs text-slate-400">Comprata da</span>
-                <select
-                  value={buyTeam}
-                  onChange={(e) => setBuyTeam(e.target.value)}
-                  className="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                >
-                  <option value="">—</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[...summaries]
+                    .sort((a, b) => a.call_order - b.call_order)
+                    .map((s) => {
+                      const left = slotsLeftForRole(s, selected.role);
+                      const full = left <= 0;
+                      const active = buyTeam === s.team_id;
+                      const isCaller = s.team_id === settings?.current_caller_team_id;
+                      return (
+                        <button
+                          key={s.team_id}
+                          type="button"
+                          disabled={full}
+                          onClick={() => {
+                            setBuyTeam(s.team_id);
+                            setTimeout(() => priceRef.current?.focus(), 0);
+                          }}
+                          title={
+                            full
+                              ? `Reparto ${selected.role} completo`
+                              : `${s.name} — rimasti ${s.remaining}, max offerta ${maxBid(s)}`
+                          }
+                          className={`rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                            active
+                              ? 'border-indigo-400 bg-indigo-600 text-white'
+                              : full
+                                ? 'cursor-not-allowed border-slate-800 bg-slate-900/40 text-slate-600'
+                                : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-indigo-500 hover:bg-slate-800'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-1">
+                            <span className="line-clamp-2 text-sm font-semibold leading-tight">
+                              {s.name}
+                            </span>
+                            {isCaller && <span title="ha la chiamata">📢</span>}
+                          </div>
+                          <div
+                            className={`mt-1 text-xs tabular-nums ${
+                              active ? 'text-indigo-100' : 'text-slate-500'
+                            }`}
+                          >
+                            {full ? (
+                              <>{selected.role} completo</>
+                            ) : (
+                              <>
+                                {s.remaining} cr · max {maxBid(s)} · {selected.role}{' '}
+                                {boughtForRole(s, selected.role)}/
+                                {boughtForRole(s, selected.role) + left}
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
 
               <label className="block">
                 <span className="mb-1 block text-xs text-slate-400">Prezzo</span>
