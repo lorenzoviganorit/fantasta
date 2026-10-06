@@ -38,6 +38,7 @@ export default function SituazioneSquadre({
           <tr className="text-left text-xs text-slate-400">
             <ThSort label="#" col="call_order" sort={sort} className="py-1 pr-2" />
             <ThSort label="Squadra" col="name" sort={sort} className="py-1 pr-2" />
+            <ThSort label="Usati" col="spent" sort={sort} className="py-1 pr-2 text-right" />
             <ThSort label="Rimasti" col="remaining" sort={sort} className="py-1 pr-2 text-right" />
             <ThSort label="Max" col="max_bid" sort={sort} className="py-1 pr-2 text-right" />
             <ThSort label="Slot" col="slots_left_total" sort={sort} className="py-1 pr-2 text-right" />
@@ -60,6 +61,7 @@ export default function SituazioneSquadre({
                   {isCaller ? '📢' : ''} {s.call_order}
                 </td>
                 <td className="py-1.5 pr-2 font-medium">{s.name}</td>
+                <td className="py-1.5 pr-2 text-right tabular-nums text-amber-400">{s.spent}</td>
                 <td className="py-1.5 pr-2 text-right tabular-nums">{s.remaining}</td>
                 <td className="py-1.5 pr-2 text-right tabular-nums text-slate-400">{s.max_bid}</td>
                 <td className="py-1.5 pr-2 text-right tabular-nums text-slate-400">

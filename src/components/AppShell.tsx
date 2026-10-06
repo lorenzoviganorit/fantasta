@@ -7,7 +7,8 @@ import TopNav from './TopNav';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { loading } = useAuth();
-  const bare = pathname === '/login' || pathname === '/auth/callback';
+  const bare =
+    pathname === '/login' || pathname === '/auth/callback' || pathname === '/guest';
 
   if (loading && !bare) {
     return (

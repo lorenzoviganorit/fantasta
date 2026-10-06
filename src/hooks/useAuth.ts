@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { FantaTeam } from '@/lib/types';
 
-const PUBLIC_ROUTES = ['/login', '/auth/callback'];
+const PUBLIC_ROUTES = ['/login', '/auth/callback', '/guest'];
 
 interface AuthState {
   user: User | null;
