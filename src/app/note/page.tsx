@@ -16,6 +16,7 @@ import { fvmFactor, scaleFvm } from '@/lib/valuation';
 import { SOS_ORDER, sosCategory, sosScore, sosClass } from '@/lib/sos';
 
 type Filter = 'tutti' | 'preferiti' | 'con-valore' | 'senza-valore';
+const nameOf = (m: Record<string, string>, id: string | null) => (id ? m[id] ?? '?' : '?');
 
 export default function NotePage() {
   const { user, loading: authLoading } = useAuth();
@@ -27,19 +28,27 @@ export default function NotePage() {
   const [roles, setRoles] = useState<Role[]>([...ROLES]);
   const [teamF, setTeamF] = useState('');
   const [sosF, setSosF] = useState('');
+  const [hideSold, setHideSold] = useState(false);
+  const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const toggleRole = (r: Role) =>
     setRoles((cur) => (cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]));
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('tutti');
 
   const load = useCallback(async () => {
-    const [pl, nt] = await Promise.all([
+    const [pl, nt, tm] = await Promise.all([
       supabase
         .from('players')
-        .select('id,name,team,role,qt_i,fvm')
+        .select('id,name,team,role,qt_i,fvm,status,sold_price,sold_team_id')
         .order('fvm', { ascending: false, nullsFirst: false }),
       supabase.from('player_notes').select('*'),
+      supabase.from('fanta_teams').select('id,name'),
     ]);
+    setTeamNames(
+      Object.fromEntries(
+        ((tm.data as { id: string; name: string }[]) ?? []).map((t) => [t.id, t.name])
+      )
+    );
     setPlayers((pl.data as Player[]) ?? []);
     const map: Record<number, PlayerNote> = {};
     ((nt.data as PlayerNote[]) ?? []).forEach((n) => (map[n.player_id] = n));
@@ -50,7 +59,15 @@ export default function NotePage() {
   useEffect(() => {
     if (authLoading || !user) return;
     load();
-  }, [authLoading, user, load]);
+    // si aggiorna da solo quando qualcuno viene assegnato / annullato
+    const ch = supabase
+      .channel('note-sold')
+      .on('postgres_changes', { event: '*', schema: 'asta', table: 'picks' }, load)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [authLoading, user, load, supabase]);
 
   async function patch(playerId: number, fields: Partial<PlayerNote>) {
     if (!user) return;
@@ -87,6 +104,7 @@ export default function NotePage() {
     return players
       .filter((p) => roles.includes(p.role))
       .filter((p) => !teamF || p.team === teamF)
+      .filter((p) => !hideSold || p.status !== 'sold')
       .filter((p) => {
         if (!sosF) return true;
         const c = sosCategory(p.id);
@@ -100,7 +118,7 @@ export default function NotePage() {
         if (filter === 'senza-valore') return n?.expected_value == null;
         return true;
       });
-  }, [players, notes, roles, teamF, sosF, query, filter]);
+  }, [players, notes, roles, teamF, sosF, hideSold, query, filter]);
 
   const teamOptions = useMemo(
     () => [...new Set(players.map((p) => p.team))].sort((a, b) => a.localeCompare(b, 'it')),
@@ -202,6 +220,14 @@ export default function NotePage() {
           ))}
           <option value="none">Non citati da SOS</option>
         </select>
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-300">
+          <input
+            type="checkbox"
+            checked={hideSold}
+            onChange={(e) => setHideSold(e.target.checked)}
+          />
+          nascondi assegnati
+        </label>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as Filter)}
@@ -231,8 +257,19 @@ export default function NotePage() {
           <tbody>
             {sorted.map((p) => {
               const n = notes[p.id];
+              const sold = p.status === 'sold';
               return (
-                <tr key={p.id} className="border-t border-slate-800">
+                <tr
+                  key={p.id}
+                  className={`border-t border-slate-800 ${
+                    sold ? 'bg-slate-950/60 opacity-40 grayscale' : ''
+                  }`}
+                  title={
+                    sold
+                      ? `Gia' assegnato a ${nameOf(teamNames, p.sold_team_id)} per ${p.sold_price}`
+                      : undefined
+                  }
+                >
                   <td className="px-3 py-1.5">
                     <span
                       className="mr-2 font-bold"
@@ -240,8 +277,13 @@ export default function NotePage() {
                     >
                       {p.role}
                     </span>
-                    <b>{p.name}</b>{' '}
+                    <b className={sold ? 'line-through' : ''}>{p.name}</b>{' '}
                     <span className="text-slate-500">{p.team}</span>
+                    {sold && (
+                      <span className="ml-2 rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300">
+                        assegnato: {nameOf(teamNames, p.sold_team_id)} - {p.sold_price}
+                      </span>
+                    )}
                   </td>
                   <td className="px-2 py-1.5 text-right text-slate-400">{p.qt_i ?? '–'}</td>
                   <td className="px-2 py-1.5 text-right text-slate-500">{scaleFvm(p.fvm, fvmF) ?? '–'}</td>
@@ -255,7 +297,8 @@ export default function NotePage() {
                   <td className="px-2 py-1.5 text-center">
                     <button
                       onClick={() => patch(p.id, { is_favorite: !n?.is_favorite })}
-                      className="text-base"
+                      disabled={sold}
+                      className="text-base disabled:cursor-not-allowed"
                     >
                       {n?.is_favorite ? '⭐' : '☆'}
                     </button>
@@ -264,6 +307,7 @@ export default function NotePage() {
                     <input
                       type="number"
                       defaultValue={n?.expected_value ?? ''}
+                      disabled={sold}
                       onBlur={(e) => {
                         const v = e.target.value === '' ? null : Number(e.target.value);
                         if (v !== (n?.expected_value ?? null)) patch(p.id, { expected_value: v });
@@ -275,6 +319,7 @@ export default function NotePage() {
                     <input
                       type="number"
                       defaultValue={n?.max_bid ?? ''}
+                      disabled={sold}
                       onBlur={(e) => {
                         const v = e.target.value === '' ? null : Number(e.target.value);
                         if (v !== (n?.max_bid ?? null)) patch(p.id, { max_bid: v });
@@ -285,6 +330,7 @@ export default function NotePage() {
                   <td className="px-3 py-1.5">
                     <input
                       defaultValue={n?.note ?? ''}
+                      disabled={sold}
                       onBlur={(e) => {
                         const v = e.target.value || null;
                         if (v !== (n?.note ?? null)) patch(p.id, { note: v });

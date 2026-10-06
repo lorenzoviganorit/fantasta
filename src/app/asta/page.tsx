@@ -28,6 +28,7 @@ import {
 import SituazioneSquadre from '@/components/SituazioneSquadre';
 import { useSpeech } from '@/hooks/useSpeech';
 import { fvmFactor, scaleFvm } from '@/lib/valuation';
+import { SOS_ORDER, sosCategory, sosClass } from '@/lib/sos';
 import { parseAuctionUtterance, type ParsedUtterance } from '@/lib/voiceParse';
 
 interface RecentPick extends Pick {
@@ -50,6 +51,7 @@ export default function AstaPage() {
 
   const [role, setRole] = useState<Role>('P');
   const [teamF, setTeamF] = useState('');
+  const [sosF, setSosF] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Player | null>(null);
   const [buyTeam, setBuyTeam] = useState<string>('');
@@ -131,9 +133,14 @@ export default function AstaPage() {
     return available
       .filter((p) => p.role === role)
       .filter((p) => !teamF || p.team === teamF)
+      .filter((p) => {
+        if (!sosF) return true;
+        const c = sosCategory(p.id);
+        return sosF === 'none' ? !c : c === sosF;
+      })
       .filter((p) => !q || p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
       .slice(0, 60);
-  }, [available, role, teamF, query]);
+  }, [available, role, teamF, sosF, query]);
 
   const teamOptions = useMemo(
     () => [...new Set(players.map((p) => p.team))].sort((a, b) => a.localeCompare(b, 'it')),
@@ -387,18 +394,34 @@ export default function AstaPage() {
                 {r}
               </button>
             ))}
-            <select
-              value={teamF}
-              onChange={(e) => setTeamF(e.target.value)}
-              className="ml-auto rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
-            >
-              <option value="">Tutte le squadre</option>
-              {teamOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+            <div className="ml-auto flex flex-wrap gap-1.5">
+              <select
+                value={sosF}
+                onChange={(e) => setSosF(e.target.value)}
+                title="Fascia della guida SOS Fanta"
+                className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+              >
+                <option value="">Tutte le fasce SOS</option>
+                {SOS_ORDER.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                <option value="none">Non citati da SOS</option>
+              </select>
+              <select
+                value={teamF}
+                onChange={(e) => setTeamF(e.target.value)}
+                className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+              >
+                <option value="">Tutte le squadre</option>
+                {teamOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex gap-2">
             <input
@@ -499,6 +522,14 @@ export default function AstaPage() {
                     {n?.is_favorite && <span title="preferito">⭐ </span>}
                     <b>{p.name}</b> <span className="text-slate-500">{p.team}</span>
                   </span>
+                  {sosCategory(p.id) && (
+                    <span
+                      className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold ${sosClass(sosCategory(p.id)!)}`}
+                      title="Fascia SOS Fanta"
+                    >
+                      {sosCategory(p.id)}
+                    </span>
+                  )}
                   {n?.expected_value != null && (
                     <span className="text-emerald-400" title="tuo valore atteso">
                       ~{n.expected_value}
