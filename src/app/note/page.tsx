@@ -16,6 +16,7 @@ import { fvmFactor, scaleFvm } from '@/lib/valuation';
 import { SOS_ORDER, sosCategory, sosScore, sosClass } from '@/lib/sos';
 import { SLOT_VALUES, slotOf, slotScore, slotClass } from '@/lib/slots';
 import { statOf, fmt } from '@/lib/stats';
+import { fantacalcioUrl } from '@/lib/links';
 
 type Filter = 'tutti' | 'preferiti' | 'con-valore' | 'senza-valore';
 const nameOf = (m: Record<string, string>, id: string | null) => (id ? m[id] ?? '?' : '?');
@@ -309,7 +310,16 @@ export default function NotePage() {
                     >
                       {p.role}
                     </span>
-                    <b className={sold ? 'line-through' : ''}>{p.name}</b>{' '}
+                    <b className={sold ? 'line-through' : ''}>{p.name}</b>
+                    <a
+                      href={fantacalcioUrl(p)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Scheda su fantacalcio.it"
+                      className="ml-1 text-slate-500 hover:text-indigo-400"
+                    >
+                      ↗
+                    </a>{' '}
                     <span className="text-slate-500">{p.team}</span>
                     {sold && (
                       <span className="ml-2 rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300">

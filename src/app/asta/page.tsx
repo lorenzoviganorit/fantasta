@@ -30,6 +30,7 @@ import { useSpeech } from '@/hooks/useSpeech';
 import { fvmFactor, scaleFvm } from '@/lib/valuation';
 import { SOS_ORDER, sosCategory, sosClass } from '@/lib/sos';
 import { statOf, fmt } from '@/lib/stats';
+import { fantacalcioUrl } from '@/lib/links';
 import { parseAuctionUtterance, type ParsedUtterance } from '@/lib/voiceParse';
 
 interface RecentPick extends Pick {
@@ -522,6 +523,17 @@ export default function AstaPage() {
                   <span className="flex-1">
                     {n?.is_favorite && <span title="preferito">⭐ </span>}
                     <b>{p.name}</b> <span className="text-slate-500">{p.team}</span>
+                    <span
+                      role="link"
+                      title="Scheda su fantacalcio.it"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(fantacalcioUrl(p), '_blank', 'noopener,noreferrer');
+                      }}
+                      className="ml-1 text-slate-500 hover:text-indigo-400 cursor-pointer"
+                    >
+                      ↗
+                    </span>
                     {n?.note && (
                       <span className="block truncate text-xs text-slate-500" title={n.note}>
                         📝 {n.note}
@@ -568,6 +580,15 @@ export default function AstaPage() {
                   <span className="text-sm font-normal text-slate-400">
                     {selected.team} · {selected.role}
                   </span>
+                  <a
+                    href={fantacalcioUrl(selected)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Scheda su fantacalcio.it"
+                    className="ml-1 text-slate-500 hover:text-indigo-400 text-sm font-normal"
+                  >
+                    ↗ scheda
+                  </a>
                 </div>
                 {statOf(selected.id) && (
                   <div className="mt-0.5 text-xs tabular-nums text-slate-400">
