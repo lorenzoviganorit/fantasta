@@ -135,7 +135,7 @@ export default function NotePage() {
   );
 
   const fvmF = useMemo(() => fvmFactor(players), [players]);
-  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'pv' | 'fm' | 'gol' | 'ass' | 'sos' | 'slot' | 'fav' | 'ev' | 'max';
+  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'pv' | 'fm' | 'gol' | 'ass' | 'sos' | 'slot' | 'fav' | 'ev';
   const getVal = useCallback(
     (p: Player, k: Col) => {
       const n = notes[p.id];
@@ -152,7 +152,6 @@ export default function NotePage() {
         case 'slot': return slotScore(slotOf(p.id));
         case 'fav': return n?.is_favorite ? 1 : 0;
         case 'ev': return n?.expected_value ?? null;
-        case 'max': return n?.max_bid ?? null;
       }
     },
     [notes]
@@ -283,7 +282,6 @@ export default function NotePage() {
               <ThSort label="Slot" col="slot" sort={sort} className="px-2 py-2 text-left" />
               <ThSort label="★" col="fav" sort={sort} className="px-2 py-2 text-center" />
               <ThSort label="Valore atteso" col="ev" sort={sort} className="px-2 py-2 text-right" />
-              <ThSort label="Max" col="max" sort={sort} className="px-2 py-2 text-right" />
               <th className="px-3 py-2 text-left">Nota</th>
             </tr>
           </thead>
@@ -370,18 +368,6 @@ export default function NotePage() {
                       className="w-16 rounded bg-slate-900 border border-slate-700 px-1.5 py-1 text-right outline-none focus:border-indigo-500"
                     />
                   </td>
-                  <td className="px-2 py-1.5 text-right">
-                    <input
-                      type="number"
-                      defaultValue={n?.max_bid ?? ''}
-                      disabled={sold}
-                      onBlur={(e) => {
-                        const v = e.target.value === '' ? null : Number(e.target.value);
-                        if (v !== (n?.max_bid ?? null)) patch(p.id, { max_bid: v });
-                      }}
-                      className="w-16 rounded bg-slate-900 border border-slate-700 px-1.5 py-1 text-right outline-none focus:border-indigo-500"
-                    />
-                  </td>
                   <td className="px-3 py-1.5">
                     <input
                       defaultValue={n?.note ?? ''}
@@ -398,7 +384,7 @@ export default function NotePage() {
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-3 py-6 text-center text-slate-500">
+                <td colSpan={12} className="px-3 py-6 text-center text-slate-500">
                   Nessun giocatore.
                 </td>
               </tr>
