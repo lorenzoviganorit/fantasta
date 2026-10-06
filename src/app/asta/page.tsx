@@ -521,6 +521,11 @@ export default function AstaPage() {
                   <span className="flex-1">
                     {n?.is_favorite && <span title="preferito">⭐ </span>}
                     <b>{p.name}</b> <span className="text-slate-500">{p.team}</span>
+                    {n?.note && (
+                      <span className="block truncate text-xs text-slate-500" title={n.note}>
+                        📝 {n.note}
+                      </span>
+                    )}
                   </span>
                   {sosCategory(p.id) && (
                     <span
@@ -758,23 +763,29 @@ function PrivateNote({
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [val, setVal] = useState(note?.expected_value?.toString() ?? '');
+  const [max, setMax] = useState(note?.max_bid?.toString() ?? '');
+  const [text, setText] = useState(note?.note ?? '');
   const [fav, setFav] = useState(note?.is_favorite ?? false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setVal(note?.expected_value?.toString() ?? '');
+    setMax(note?.max_bid?.toString() ?? '');
+    setText(note?.note ?? '');
     setFav(note?.is_favorite ?? false);
   }, [note, player.id]);
 
-  async function save(nextFav = fav, nextVal = val) {
+  async function save(over: { fav?: boolean } = {}) {
     setSaving(true);
     const { data: u } = await supabase.auth.getUser();
     await supabase.from('player_notes').upsert(
       {
         user_id: u.user!.id,
         player_id: player.id,
-        is_favorite: nextFav,
-        expected_value: nextVal === '' ? null : Number(nextVal),
+        is_favorite: over.fav ?? fav,
+        expected_value: val === '' ? null : Number(val),
+        max_bid: max === '' ? null : Number(max),
+        note: text.trim() === '' ? null : text.trim(),
       },
       { onConflict: 'user_id,player_id' }
     );
@@ -782,27 +793,47 @@ function PrivateNote({
     onSaved();
   }
 
+  const numCls =
+    'w-16 rounded bg-slate-900 border border-slate-700 px-1.5 py-0.5 text-sm outline-none focus:border-indigo-500';
+
   return (
-    <div className="mt-1 flex items-center gap-2 text-xs">
-      <button
-        onClick={() => {
-          setFav(!fav);
-          save(!fav);
-        }}
-        title="preferito"
-        className="text-base"
-      >
-        {fav ? '⭐' : '☆'}
-      </button>
-      <span className="text-slate-400">mio valore</span>
+    <div className="mt-1 space-y-1.5 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => {
+            setFav(!fav);
+            save({ fav: !fav });
+          }}
+          title="preferito"
+          className="text-base"
+        >
+          {fav ? '⭐' : '☆'}
+        </button>
+        <span className="text-slate-400">mio valore</span>
+        <input
+          type="number"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={() => save()}
+          className={numCls}
+        />
+        <span className="text-slate-400">max</span>
+        <input
+          type="number"
+          value={max}
+          onChange={(e) => setMax(e.target.value)}
+          onBlur={() => save()}
+          className={numCls}
+        />
+        {saving && <span className="text-slate-600">…</span>}
+      </div>
       <input
-        type="number"
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
         onBlur={() => save()}
-        className="w-16 rounded bg-slate-900 border border-slate-700 px-1.5 py-0.5 text-sm outline-none focus:border-indigo-500"
+        placeholder="📝 nota personale…"
+        className="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1 text-sm outline-none focus:border-indigo-500"
       />
-      {saving && <span className="text-slate-600">…</span>}
     </div>
   );
 }
