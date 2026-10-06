@@ -55,6 +55,8 @@ export default function AstaPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [voice, setVoice] = useState<ParsedUtterance | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showAllLog, setShowAllLog] = useState(false);
   const priceRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -64,7 +66,7 @@ export default function AstaPage() {
       supabase.from('team_summary').select('*'),
       supabase.from('players').select('*').order('fvm', { ascending: false, nullsFirst: false }),
       supabase.from('player_notes').select('*'),
-      supabase.from('picks').select('*').order('created_at', { ascending: false }).limit(15),
+      supabase.from('picks').select('*').order('created_at', { ascending: false }).limit(300),
     ]);
     setSettings(s.data as LeagueSettings | null);
     setTeams((t.data as FantaTeam[]) ?? []);
@@ -140,6 +142,7 @@ export default function AstaPage() {
   const inflation = inflationFactor(summaries, residualValue);
 
   function selectPlayer(p: Player) {
+    setEditingId(null);
     setSelected(p);
     setErr('');
     setPrice('');
@@ -208,6 +211,37 @@ export default function AstaPage() {
     setBusy(false);
     setQuery('');
     setVoice(null);
+    load();
+  }
+
+  async function savePick(pick: RecentPick, teamId: string, newPrice: number) {
+    setBusy(true);
+    const { error } = await supabase
+      .from('picks')
+      .update({ team_id: teamId, price: newPrice })
+      .eq('id', pick.id);
+    if (error) {
+      setBusy(false);
+      return error.message;
+    }
+    // allinea i campi denormalizzati sul giocatore
+    await supabase
+      .from('players')
+      .update({ sold_price: newPrice, sold_team_id: teamId })
+      .eq('id', pick.player_id);
+    setBusy(false);
+    setEditingId(null);
+    load();
+    return null;
+  }
+
+  async function deletePick(pick: RecentPick) {
+    if (!confirm(`Eliminare: ${pick._player?.name} a ${pick._team?.name} per ${pick.price}?`))
+      return;
+    setBusy(true);
+    await supabase.from('picks').delete().eq('id', pick.id);
+    setBusy(false);
+    setEditingId(null);
     load();
   }
 
@@ -602,18 +636,50 @@ export default function AstaPage() {
                 </button>
               )}
             </div>
-            <ul className="space-y-1.5 text-sm">
+            <ul className="space-y-1 text-sm">
               {recent.length === 0 && <li className="text-slate-500">Nessun acquisto.</li>}
-              {recent.map((p) => (
-                <li key={p.id} className="text-slate-300">
-                  <b>{p._player?.name ?? '?'}</b>
-                  {p._caller && <span className="text-slate-500"> · chiamato da {p._caller.name}</span>}
-                  <span className="text-slate-500"> → </span>
-                  <span className="text-slate-100">{p._team?.name ?? '?'}</span>
-                  <span className="text-emerald-400"> {p.price}</span>
-                </li>
-              ))}
+              {(showAllLog ? recent : recent.slice(0, 15)).map((p) =>
+                editingId === p.id ? (
+                  <li key={p.id}>
+                    <PickEditor
+                      pick={p}
+                      summaries={summaries}
+                      busy={busy}
+                      onSave={savePick}
+                      onDelete={deletePick}
+                      onClose={() => setEditingId(null)}
+                    />
+                  </li>
+                ) : (
+                  <li key={p.id}>
+                    <button
+                      onClick={() => {
+                        setEditingId(p.id);
+                        setSelected(null);
+                      }}
+                      title="Clicca per modificare squadra o prezzo"
+                      className="w-full rounded-md px-1.5 py-1 text-left text-slate-300 hover:bg-slate-800/70"
+                    >
+                      <b>{p._player?.name ?? '?'}</b>
+                      {p._caller && (
+                        <span className="text-slate-500"> · chiamato da {p._caller.name}</span>
+                      )}
+                      <span className="text-slate-500"> → </span>
+                      <span className="text-slate-100">{p._team?.name ?? '?'}</span>
+                      <span className="text-emerald-400"> {p.price}</span>
+                    </button>
+                  </li>
+                )
+              )}
             </ul>
+            {recent.length > 15 && (
+              <button
+                onClick={() => setShowAllLog((v) => !v)}
+                className="mt-2 text-xs text-slate-400 hover:text-slate-200"
+              >
+                {showAllLog ? 'mostra solo gli ultimi 15' : `mostra tutti (${recent.length})`}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -685,6 +751,125 @@ function PrivateNote({
         className="w-16 rounded bg-slate-900 border border-slate-700 px-1.5 py-0.5 text-sm outline-none focus:border-indigo-500"
       />
       {saving && <span className="text-slate-600">…</span>}
+    </div>
+  );
+}
+
+function PickEditor({
+  pick,
+  summaries,
+  busy,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  pick: RecentPick;
+  summaries: TeamSummary[];
+  busy: boolean;
+  onSave: (pick: RecentPick, teamId: string, price: number) => Promise<string | null>;
+  onDelete: (pick: RecentPick) => void;
+  onClose: () => void;
+}) {
+  const [teamId, setTeamId] = useState(pick.team_id);
+  const [price, setPrice] = useState(String(pick.price));
+  const [err, setErr] = useState('');
+  const role = pick._player?.role;
+
+  // riepilogo "come se l'acquisto non esistesse" per la squadra che lo possiede ora
+  const adjusted = (s: TeamSummary): TeamSummary =>
+    s.team_id !== pick.team_id || !role
+      ? s
+      : {
+          ...s,
+          remaining: s.remaining + pick.price,
+          slots_left_total: s.slots_left_total + 1,
+          left_p: s.left_p + (role === 'P' ? 1 : 0),
+          left_d: s.left_d + (role === 'D' ? 1 : 0),
+          left_c: s.left_c + (role === 'C' ? 1 : 0),
+          left_a: s.left_a + (role === 'A' ? 1 : 0),
+        };
+
+  const target = summaries.find((s) => s.team_id === teamId);
+  const check =
+    target && role
+      ? canBuy(adjusted(target), role, Number(price))
+      : { ok: false, reason: '' };
+  const unchanged = teamId === pick.team_id && Number(price) === pick.price;
+
+  async function save() {
+    if (!check.ok) return;
+    const e = await onSave(pick, teamId, Number(price));
+    if (e) setErr(e);
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-indigo-500/60 bg-indigo-950/30 p-2.5">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold">
+          {pick._player?.name ?? '?'}{' '}
+          <span className="text-xs font-normal text-slate-400">{pick._player?.team}</span>
+        </span>
+        <button onClick={onClose} className="text-xs text-slate-400 hover:text-slate-200">
+          ✕ chiudi
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        {[...summaries]
+          .sort((a, b) => a.call_order - b.call_order)
+          .map((s) => {
+            const active = teamId === s.team_id;
+            const full = role ? slotsLeftForRole(adjusted(s), role) <= 0 : false;
+            return (
+              <button
+                key={s.team_id}
+                type="button"
+                disabled={full && !active}
+                onClick={() => setTeamId(s.team_id)}
+                className={`rounded-md border px-2 py-1.5 text-left text-xs leading-tight transition-colors ${
+                  active
+                    ? 'border-indigo-400 bg-indigo-600 text-white'
+                    : full
+                      ? 'cursor-not-allowed border-slate-800 text-slate-600'
+                      : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-indigo-500'
+                }`}
+              >
+                <div className="line-clamp-2 font-semibold">{s.name}</div>
+                <div className={active ? 'text-indigo-100' : 'text-slate-500'}>
+                  {adjusted(s).remaining} cr · max {maxBid(adjusted(s))}
+                </div>
+              </button>
+            );
+          })}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={1}
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !unchanged && check.ok && save()}
+          className="w-24 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-base font-semibold outline-none focus:border-indigo-500"
+        />
+        <button
+          onClick={save}
+          disabled={busy || unchanged || !check.ok}
+          className="flex-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold hover:bg-emerald-500 disabled:opacity-40"
+        >
+          Salva modifica
+        </button>
+        <button
+          onClick={() => onDelete(pick)}
+          disabled={busy}
+          title="Elimina l'acquisto"
+          className="rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-red-400 hover:bg-slate-700"
+        >
+          🗑
+        </button>
+      </div>
+      {!check.ok && check.reason && <div className="text-xs text-red-400">{check.reason}</div>}
+      {err && <div className="text-xs text-red-400">{err}</div>}
     </div>
   );
 }
