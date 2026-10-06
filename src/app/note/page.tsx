@@ -12,6 +12,7 @@ import {
 } from '@/lib/types';
 import NotesImport from './NotesImport';
 import { useSort, ThSort } from '@/components/sortable';
+import { fvmFactor, scaleFvm } from '@/lib/valuation';
 
 type Filter = 'tutti' | 'preferiti' | 'con-valore' | 'senza-valore';
 
@@ -90,6 +91,7 @@ export default function NotePage() {
       });
   }, [players, notes, role, query, filter]);
 
+  const fvmF = useMemo(() => fvmFactor(players), [players]);
   type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'fav' | 'ev' | 'max';
   const getVal = useCallback(
     (p: Player, k: Col) => {
@@ -166,7 +168,7 @@ export default function NotePage() {
             <tr>
               <ThSort label="Giocatore" col="name" sort={sort} className="px-3 py-2 text-left" />
               <ThSort label="Qt" col="qt_i" sort={sort} className="px-2 py-2 text-right" />
-              <ThSort label="FVM" col="fvm" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="FVM 510" col="fvm" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="★" col="fav" sort={sort} className="px-2 py-2 text-center" />
               <ThSort label="Valore atteso" col="ev" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="Max" col="max" sort={sort} className="px-2 py-2 text-right" />
@@ -189,7 +191,7 @@ export default function NotePage() {
                     <span className="text-slate-500">{p.team}</span>
                   </td>
                   <td className="px-2 py-1.5 text-right text-slate-400">{p.qt_i ?? '–'}</td>
-                  <td className="px-2 py-1.5 text-right text-slate-500">{p.fvm ?? '–'}</td>
+                  <td className="px-2 py-1.5 text-right text-slate-500">{scaleFvm(p.fvm, fvmF) ?? '–'}</td>
                   <td className="px-2 py-1.5 text-center">
                     <button
                       onClick={() => patch(p.id, { is_favorite: !n?.is_favorite })}

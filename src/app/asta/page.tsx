@@ -27,6 +27,7 @@ import {
 } from '@/lib/auction';
 import SituazioneSquadre from '@/components/SituazioneSquadre';
 import { useSpeech } from '@/hooks/useSpeech';
+import { fvmFactor, scaleFvm } from '@/lib/valuation';
 import { parseAuctionUtterance, type ParsedUtterance } from '@/lib/voiceParse';
 
 interface RecentPick extends Pick {
@@ -118,6 +119,7 @@ export default function AstaPage() {
     ? nextCaller(summaries, callerSummary?.call_order ?? null, phase)
     : null;
 
+  const fvmF = useMemo(() => fvmFactor(players), [players]);
   const available = useMemo(
     () => players.filter((p) => p.status === 'available'),
     [players]
@@ -484,7 +486,7 @@ export default function AstaPage() {
                     </span>
                   )}
                   <span className="text-slate-500">Qt {p.qt_i ?? '–'}</span>
-                  <span className="text-slate-600">FVM {p.fvm ?? '–'}</span>
+                  <span className="text-slate-600">FVM {scaleFvm(p.fvm, fvmF) ?? '–'}</span>
                 </button>
               );
             })}

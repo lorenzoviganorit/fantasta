@@ -16,6 +16,8 @@ import {
   computeValuations,
   computeProjection,
   startersBudgetCheck,
+  fvmFactor,
+  scaleFvm,
   type ValuationParams,
   type ValuationRow,
   type ProjectionRow,
@@ -90,6 +92,7 @@ export default function AlgoritmoPage() {
     [players]
   );
 
+  const fvmF = useMemo(() => fvmFactor(players, params), [players, params]);
   const isProj = (r: ValuationRow): r is ProjectionRow => 'fmAttesa' in r;
 
   const roleRows = useMemo(
@@ -255,7 +258,7 @@ export default function AlgoritmoPage() {
                   <ThSort label="Fpt" col="fpt" sort={sort} className="px-2 py-2 text-right" />
                 </>
               ) : (
-                <ThSort label="FVM" col="fvm" sort={sort} className="px-2 py-2 text-right" />
+                <ThSort label="FVM 510" col="fvm" sort={sort} className="px-2 py-2 text-right" />
               )}
               <ThSort label="Prezzo" col="price" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="Max" col="max" sort={sort} className="px-2 py-2 text-right" />
@@ -320,7 +323,7 @@ export default function AlgoritmoPage() {
                     </>
                   ) : (
                     <td className="px-2 py-1.5 text-right text-slate-500">
-                      {r.player.fvm ?? '–'}
+                      {scaleFvm(r.player.fvm, fvmF) ?? '–'}
                     </td>
                   )}
                   <td className="px-2 py-1.5 text-right font-semibold">{r.expectedPrice}</td>

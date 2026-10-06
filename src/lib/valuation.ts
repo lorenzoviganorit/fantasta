@@ -59,6 +59,33 @@ const GK_TIER_FM: Record<number, number> = { 1: 0.85, 2: 0.45, 3: 0.05, 4: -0.3,
 /** contributo del modificatore difesa alla FM di ogni DIFENSORE titolare, per fascia */
 const DEF_MOD_FM: Record<number, number> = { 1: 0.4, 2: 0.22, 3: 0.06, 4: -0.05, 5: -0.15 };
 
+/**
+ * Fattore per riparametrare l'FVM (calibrato da Fantacalcio.it su un'asta da ~10 squadre
+ * x 1000 crediti) sulla nostra lega: la somma dell'FVM dei "titolari" (squadre x slot
+ * per ruolo) diventa il budget allocabile (squadre x budget - 1 credito a slot).
+ */
+export function fvmFactor(
+  players: { role: Role; fvm: number | null }[],
+  params: ValuationParams = DEFAULT_PARAMS
+): number {
+  const totalSlots = ROLES.reduce((a, r) => a + params.slots[r], 0);
+  const allocatable = params.budget * params.teams - params.teams * totalSlots;
+  let sum = 0;
+  for (const role of ROLES) {
+    const n = params.teams * params.slots[role];
+    sum += players
+      .filter((p) => p.role === role)
+      .map((p) => p.fvm ?? 0)
+      .sort((a, b) => b - a)
+      .slice(0, n)
+      .reduce((a, b) => a + b, 0);
+  }
+  return sum > 0 ? allocatable / sum : 1;
+}
+
+export const scaleFvm = (fvm: number | null | undefined, factor: number): number | null =>
+  fvm == null ? null : Math.max(1, Math.round(fvm * factor));
+
 export interface ValuationRow {
   player: Player;
   raw: number;
