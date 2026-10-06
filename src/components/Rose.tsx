@@ -21,20 +21,20 @@ export default function Rose({
 }) {
   const teams = [...summaries].sort((a, b) => a.call_order - b.call_order);
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-flow-col auto-cols-[minmax(150px,1fr)] gap-2 overflow-x-auto pb-1">
       {teams.map((s) => {
         const mine = picks.filter((p) => p.team_id === s.team_id);
         return (
           <div
             key={s.team_id}
-            className="rounded-xl border border-slate-800 bg-slate-900/50 p-3"
+            className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/50 p-2.5"
           >
-            <div className="flex items-baseline justify-between gap-2">
-              <h4 className="line-clamp-1 text-sm font-semibold">{s.name}</h4>
-              <span className="whitespace-nowrap text-xs tabular-nums text-slate-400">
-                <span className="text-amber-400">{s.spent}</span> usati ·{' '}
-                <span className="text-emerald-400">{s.remaining}</span> rimasti
-              </span>
+            <h4 className="truncate text-sm font-semibold" title={s.name}>
+              {s.name}
+            </h4>
+            <div className="text-xs tabular-nums text-slate-400">
+              <span className="text-amber-400">{s.spent}</span> usati ·{' '}
+              <span className="text-emerald-400">{s.remaining}</span> rimasti
             </div>
             <div className="mt-2 space-y-1.5">
               {ORDER.map((r) => {

@@ -92,7 +92,7 @@ export default function GuestPage() {
   );
 
   return (
-    <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
+    <main className="mx-auto max-w-screen-2xl space-y-5 px-4 py-6">
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
         <span className="font-bold">⚽ {data.settings?.league_name ?? 'FantAsta'}</span>
         <span className="text-sm text-slate-400">stato: {data.settings?.status}</span>
