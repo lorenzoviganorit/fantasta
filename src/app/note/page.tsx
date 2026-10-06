@@ -13,6 +13,7 @@ import {
 import NotesImport from './NotesImport';
 import { useSort, ThSort } from '@/components/sortable';
 import { fvmFactor, scaleFvm } from '@/lib/valuation';
+import { SOS_ORDER, sosCategory, sosScore, sosClass } from '@/lib/sos';
 
 type Filter = 'tutti' | 'preferiti' | 'con-valore' | 'senza-valore';
 
@@ -25,6 +26,7 @@ export default function NotePage() {
 
   const [roles, setRoles] = useState<Role[]>([...ROLES]);
   const [teamF, setTeamF] = useState('');
+  const [sosF, setSosF] = useState('');
   const toggleRole = (r: Role) =>
     setRoles((cur) => (cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]));
   const [query, setQuery] = useState('');
@@ -85,6 +87,11 @@ export default function NotePage() {
     return players
       .filter((p) => roles.includes(p.role))
       .filter((p) => !teamF || p.team === teamF)
+      .filter((p) => {
+        if (!sosF) return true;
+        const c = sosCategory(p.id);
+        return sosF === 'none' ? !c : c === sosF;
+      })
       .filter((p) => !q || p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
       .filter((p) => {
         const n = notes[p.id];
@@ -93,7 +100,7 @@ export default function NotePage() {
         if (filter === 'senza-valore') return n?.expected_value == null;
         return true;
       });
-  }, [players, notes, roles, teamF, query, filter]);
+  }, [players, notes, roles, teamF, sosF, query, filter]);
 
   const teamOptions = useMemo(
     () => [...new Set(players.map((p) => p.team))].sort((a, b) => a.localeCompare(b, 'it')),
@@ -101,7 +108,7 @@ export default function NotePage() {
   );
 
   const fvmF = useMemo(() => fvmFactor(players), [players]);
-  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'fav' | 'ev' | 'max';
+  type Col = 'name' | 'team' | 'qt_i' | 'fvm' | 'sos' | 'fav' | 'ev' | 'max';
   const getVal = useCallback(
     (p: Player, k: Col) => {
       const n = notes[p.id];
@@ -110,6 +117,7 @@ export default function NotePage() {
         case 'team': return p.team;
         case 'qt_i': return p.qt_i;
         case 'fvm': return p.fvm;
+        case 'sos': return sosScore(sosCategory(p.id));
         case 'fav': return n?.is_favorite ? 1 : 0;
         case 'ev': return n?.expected_value ?? null;
         case 'max': return n?.max_bid ?? null;
@@ -181,6 +189,20 @@ export default function NotePage() {
           className="min-w-[160px] flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
         />
         <select
+          value={sosF}
+          onChange={(e) => setSosF(e.target.value)}
+          title="Fascia della guida SOS Fanta"
+          className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
+        >
+          <option value="">Tutte le fasce SOS</option>
+          {SOS_ORDER.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+          <option value="none">Non citati da SOS</option>
+        </select>
+        <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as Filter)}
           className="rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-indigo-500"
@@ -199,6 +221,7 @@ export default function NotePage() {
               <ThSort label="Giocatore" col="name" sort={sort} className="px-3 py-2 text-left" />
               <ThSort label="Qt" col="qt_i" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="FVM 510" col="fvm" sort={sort} className="px-2 py-2 text-right" />
+              <ThSort label="SOS Fanta" col="sos" sort={sort} className="px-2 py-2 text-left" />
               <ThSort label="★" col="fav" sort={sort} className="px-2 py-2 text-center" />
               <ThSort label="Valore atteso" col="ev" sort={sort} className="px-2 py-2 text-right" />
               <ThSort label="Max" col="max" sort={sort} className="px-2 py-2 text-right" />
@@ -222,6 +245,13 @@ export default function NotePage() {
                   </td>
                   <td className="px-2 py-1.5 text-right text-slate-400">{p.qt_i ?? '–'}</td>
                   <td className="px-2 py-1.5 text-right text-slate-500">{scaleFvm(p.fvm, fvmF) ?? '–'}</td>
+                  <td className="px-2 py-1.5">
+                    {sosCategory(p.id) && (
+                      <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold ${sosClass(sosCategory(p.id)!)}`}>
+                        {sosCategory(p.id)}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-2 py-1.5 text-center">
                     <button
                       onClick={() => patch(p.id, { is_favorite: !n?.is_favorite })}
@@ -267,7 +297,7 @@ export default function NotePage() {
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-slate-500">
+                <td colSpan={8} className="px-3 py-6 text-center text-slate-500">
                   Nessun giocatore.
                 </td>
               </tr>
