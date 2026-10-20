@@ -37,7 +37,7 @@ export default function ExportRose({
       <button
         disabled={disabled}
         className={cls}
-        title="Una riga per acquisto: Squadra;Id;Calciatore;Ruolo;Squadra Serie A;Prezzo"
+        title="Per importazione: squadra,id giocatore,costo (separato da virgola, senza intestazione)"
         onClick={() => downloadCsv(picks, teams)}
       >
         ⬇ CSV

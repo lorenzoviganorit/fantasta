@@ -43,13 +43,19 @@ const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '').
 
 const csvCell = (v: string | number) => {
   const s = String(v);
-  return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[,"
+]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-/** CSV con separatore ";" (si apre bene in Excel italiano), una riga per acquisto */
+/**
+ * CSV per l'importazione: separato da virgola, SENZA intestazione, solo
+ * squadra, id giocatore, costo (una riga per acquisto). UTF-8 senza BOM.
+ */
 export function downloadCsv(picks: ExportPick[], teams: TeamSummary[]) {
-  const lines = [HEADER, ...sorted(picks, teams).map(rowOf)].map((r) => r.map(csvCell).join(';'));
-  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const lines = sorted(picks, teams).map((p) => [p.team, p.playerId, p.price].map(csvCell).join(','));
+  const blob = new Blob([lines.join('
+') + '
+'], { type: 'text/csv;charset=utf-8' });
   download(blob, `rose_asta_${stamp()}.csv`);
 }
 
