@@ -10,6 +10,8 @@ import {
 } from '@/lib/types';
 import SituazioneSquadre from '@/components/SituazioneSquadre';
 import Rose from '@/components/Rose';
+import ExportRose from '@/components/ExportRose';
+import type { ExportPick } from '@/lib/exportRose';
 
 interface Data {
   settings: {
@@ -124,7 +126,29 @@ export default function GuestPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">Rose</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Rose</h2>
+          <ExportRose
+            teams={data.summaries}
+            picks={view.picks.flatMap((p, i): ExportPick[] =>
+              p.player && p.team
+                ? [
+                    {
+                      seq: i + 1,
+                      teamId: p.team_id,
+                      team: p.team.name,
+                      playerId: p.player.id,
+                      name: p.player.name,
+                      serieA: p.player.team,
+                      role: p.player.role,
+                      price: p.price,
+                      caller: p.caller?.name ?? null,
+                    },
+                  ]
+                : []
+            )}
+          />
+        </div>
         <Rose summaries={data.summaries} picks={view.picks} />
       </section>
 

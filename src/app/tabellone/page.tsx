@@ -14,6 +14,8 @@ import {
 } from '@/lib/types';
 import SituazioneSquadre from '@/components/SituazioneSquadre';
 import Rose from '@/components/Rose';
+import ExportRose from '@/components/ExportRose';
+import type { ExportPick } from '@/lib/exportRose';
 
 interface Row extends Pick {
   _player?: Player;
@@ -103,7 +105,29 @@ export default function TabellonePage() {
       </div>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold">Rose</h3>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">Rose</h3>
+          <ExportRose
+            teams={summaries}
+            picks={picks.flatMap((p, i): ExportPick[] =>
+              p._player && p._team
+                ? [
+                    {
+                      seq: i + 1,
+                      teamId: p.team_id,
+                      team: p._team.name,
+                      playerId: p._player.id,
+                      name: p._player.name,
+                      serieA: p._player.team,
+                      role: p._player.role,
+                      price: p.price,
+                      caller: p._caller?.name ?? null,
+                    },
+                  ]
+                : []
+            )}
+          />
+        </div>
         <Rose
           summaries={summaries}
           picks={picks.map((p) => ({
