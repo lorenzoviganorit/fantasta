@@ -43,8 +43,7 @@ const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '').
 
 const csvCell = (v: string | number) => {
   const s = String(v);
-  return /[,"
-]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[,"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
 /**
@@ -53,9 +52,7 @@ const csvCell = (v: string | number) => {
  */
 export function downloadCsv(picks: ExportPick[], teams: TeamSummary[]) {
   const lines = sorted(picks, teams).map((p) => [p.team, p.playerId, p.price].map(csvCell).join(','));
-  const blob = new Blob([lines.join('
-') + '
-'], { type: 'text/csv;charset=utf-8' });
+  const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
   download(blob, `rose_asta_${stamp()}.csv`);
 }
 
